@@ -23,7 +23,7 @@ ContinuousCallback(condition,affect!,affect_neg!=affect!;
                    initialize = (c,u,t,integrator) -> nothing,
                    save_positions = (true,true),
                    interp_points=10,
-                   abstol=1e-12,reltol=0
+                   abstol=1e-9,reltol=0
                    idxs=nothing)
 ```
 
@@ -31,7 +31,7 @@ The arguments are defined as follows:
 
 * `condition`: This is a function `condition(u,t,integrator)` for declaring when
   the callback should be used. A callback is initiated if the condition hits
-  `0` within the time interval.
+  `0` within the time interval. See the [Integrator Interface](@ref) documentation for information about `integrator`.
 * `affect!`: This is the function `affect!(integrator)` where one is allowed to
   modify the current state of the integrator. If you do not pass an `affect_neg!`
   function, it is called when `condition` is found to be `0` (at a root) and
@@ -85,7 +85,7 @@ DiscreteCallback(condition,affect!;
 
 * `condition`: This is a function `condition(u,t,integrator)` for declaring when
   the callback should be used. A callback is initiated if the condition evaluates
-  to `true`.
+  to `true`. See the [Integrator Interface](@ref) documentation for information about `integrator`.
 * `affect!`: This is the function `affect!(integrator)` where one is allowed to
   modify the current state of the integrator. For more information on what can
   be done, see the [Integrator Interface](@ref) manual page.
@@ -386,7 +386,7 @@ sol = solve(prob,Tsit5(),callback=cb)
 plot(sol,plotdensity=10000)
 ```
 
-In this case there are many events, and it steps working at around `t=54.2768`:
+In this case there are many events, and it stops working at around `t=54.2768`:
 
 ```julia
 println(sol.t)

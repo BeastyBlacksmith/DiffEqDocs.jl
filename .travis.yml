@@ -3,14 +3,9 @@ language: julia
 os:
   - linux
 julia:
-  - 0.6
+  - 1.0
 notifications:
   email: false
 script:
-  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - julia -e 'Pkg.clone(pwd())'
-  - julia -e 'Pkg.add("DiffEqBase")'
-  - julia -e 'Pkg.add("DiffEqPDEBase")'
-  - julia -e 'Pkg.add("DiffEqProblemLibrary")'
-  - julia -e 'Pkg.add("Documenter")'
-  - julia -e 'cd(Pkg.dir("DiffEqDocs")); include(joinpath("docs", "make.jl"))'
+  - julia --color=yes -e 'using Pkg; Pkg.instantiate()'
+  - julia --color=yes docs/make.jl

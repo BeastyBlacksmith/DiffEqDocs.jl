@@ -65,6 +65,9 @@ Note that the constructors for the Sundials algorithms take a main argument:
   - `:BCG` - A Biconjugate gradient method.
   - `:PCG` - A preconditioned conjugate gradient method. Only for symmetric linear systems.
   - `:TFQMR` - A TFQMR method.
+  - `:KLU` - A sparse factorization method. Requires that the user specifies a
+    Jacobian. The Jacobian must be set as a sparse matrix in the `ODEProblem`
+    type.
 
 Example:
 
@@ -88,11 +91,16 @@ IDA(;linear_solver=:Dense,jac_upper=0,jac_lower=0,krylov_dim=0,
     max_num_iters_ic = 10,
     max_num_backs_ic = 100,
     use_linesearch_ic = true,
-    max_convergence_failures = 10)
+    max_convergence_failures = 10,
+    init_all = false)
 ```
 
 See [the Sundials manual](https://computation.llnl.gov/sites/default/files/public/ida_guide.pdf)
-for details on the additional options.
+for details on the additional options. The option `init_all` controls the initial condition
+consistancy routine. If the initial conditions are inconsistant (i.e. they do not satisfy the
+implicit equation), `init_all=false` means that the algebraic variables and derivatives will
+be modified in order to satisfy the DAE. If `init_all=true`, all initial conditions will be
+modified to satify the DAE.
 
 ## DASKR.jl
 

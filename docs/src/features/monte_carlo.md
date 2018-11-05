@@ -9,7 +9,7 @@ To perform a Monte Carlo simulation, define a `MonteCarloProblem`. The construct
 ```julia
 MonteCarloProblem(prob::DEProblem;
                   output_func = (sol,i) -> (sol,false),
-                  prob_func= (prob,i,repeat)->prob),
+                  prob_func= (prob,i,repeat)->(prob),
                   reduction = (u,data,I)->(append!(u,data),false),
                   u_init = [])
 ```
@@ -122,7 +122,9 @@ along. A useful argument to use is `linealpha` which will change the transparenc
 of the plots. An additional argument is `idxs` which allows you to choose which
 components of the solution to plot. For example, if the differential equation
 is a vector of 9 values, `idxs=1:2:9` will plot only the Monte Carlo solutions
-of the odd components.
+of the odd components. An other additional argument is `zcolors` which allows
+you to pass a `zcolor` for each series. For details about `zcolor` see the 
+[documentation for Plots.jl](http://docs.juliaplots.org/latest/attributes/).
 
 ## Analyzing a Monte Carlo Experiment
 
@@ -293,6 +295,9 @@ solution object. `sim[i].prob` is the problem that specific trajectory solved,
 and `sim[i].prob.u0` would then be the initial condition used in the `i`th
 trajectory.
 
+Note: If the problem has callbacks, the functions for the `condition` and
+`affect!` must be named functions (not anonymous functions).
+
 ### Using multithreading
 
 The previous Monte Carlo simulation can also be parallelized using a multithreading
@@ -334,49 +339,42 @@ end
 
 ## Example 2: Solving an SDE with Different Parameters
 
-### Using the Parameterized Function Wrappers
-
-Let's solve the same SDE but with varying parameters. Instead of using the macro,
-we will use [the parameterized function wrappers](../analysis/parameterized_functions.html)
-(though either can be used). Let's create a Lotka-Volterra system with multiplicative
-noise. Our Lotka-Volterra system will have as its drift component:
+Let's solve the same SDE but with varying parameters. Let's create a Lotka-Volterra 
+system with multiplicative noise. Our Lotka-Volterra system will have as its 
+drift component:
 
 ```julia
-function pf_func(u,p,t,p,du)
+function f(du,u,p,t)
   du[1] = p[1] * u[1] - p[2] * u[1]*u[2]
   du[2] = -3 * u[2] + u[1]*u[2]
 end
-pf = ParameterizedFunction(pf_func,[1.5,1.0])
 ```
 
-where `pf` is the function with the parameters `1.5` and `1.0` associated with it.
 For our noise function we will use multiplicative noise:
 
 ```julia
-function pg_func(u,p,t,p,du)
-  du[1] = p[1]*u[1]
-  du[2] = p[2]*u[2]
+function g(du,u,p,t)
+  du[1] = p[3]*u[1]
+  du[2] = p[4]*u[2]
 end
-pg = ParameterizedFunction(pg_func,[0.1,0.1])
 ```
 
 Now we build the SDE with these functions:
 
 ```julia
-prob = SDEProblem(pf,pg,[1.0,1.0],(0.0,10.0))
+p = [1.5,1.0,0.1,0.1]
+prob = SDEProblem(f,g,[1.0,1.0],(0.0,10.0),p)
 ```
 
 This is the base problem for our study. What would like to do with this experiment
 is keep the same parameters in the deterministic component each time, but very
 the parameters for the amount of noise using `0.3rand(2)` as our parameters.
-Once again, we do this with a `prob_func`. In a `ParameterizedFunction` `f`, the
-parameters are accessed at `f.params`. Thus we will modify those values in the
-`prob_func`. Note that in the `SDEProblem`, the noise function is referred to as
-`g`:
+Once again, we do this with a `prob_func`, and here we modify the parameters in
+`prob.p`:
 
 ```julia
 function prob_func(prob,i,repeat)
-  set_param_values!(prob.g,0.3rand(2))
+  prob.p[3:4] = 0.3rand(2)
   prob
 end
 ```

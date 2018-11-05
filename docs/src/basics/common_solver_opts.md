@@ -13,11 +13,13 @@ given option, see the [Solver Compatibility Chart](@ref)
 
 ## Default Algorithm Hinting
 
-To help choose the default algorithm, the keyword argument `alg_hints` is provided to `solve`.
-`alg_hints` is a `Vector{Symbol}` which describe the problem at a high level
-to the solver. The options are:
+To help choose the default algorithm, the keyword argument `alg_hints` is
+provided to `solve`. `alg_hints` is a `Vector{Symbol}` which describe the
+problem at a high level to the solver. The options are:
 
-* `:nonstiff` vs `:stiff` - Denotes the equation as nonstiff/stiff.
+* `:auto` vs `:nonstiff` vs `:stiff` - Denotes the equation as nonstiff/stiff.
+  `:auto` allow the default handling algorithm to choose stiffness detection
+  algorithms. The default handling defaults to using `:auto`.
 
 Currently unused options include:
 
@@ -26,9 +28,8 @@ Currently unused options include:
 
 This functionality is derived via the benchmarks in
 [DiffEqBenchmarks.jl](https://github.com/JuliaDiffEq/DiffEqBenchmarks.jl)
-and is under active development.
 
-### SDE Specific
+### SDE Specific Alghints
 
 * `:additive` - Denotes that the underlying SDE has additive noise.
 * `:stratonovich` - Denotes that the solution should adhere to the Stratonovich
@@ -78,6 +79,10 @@ section at the end of this page for some example usage.
   timeseries. These "steps" are the steps that the solver stops internally
   (the ones you get by `save_everystep = true`), not the ones that are
   instructed by the user (all solvers work in a step-like manner). Defaults to 1.
+* `save_on`: Denotes whether intermediate solutions are saved. This overrides the
+  settings of `dense`, `saveat` and `save_everystep` and is used by some applicatioins
+  to manually turn off saving temporarily. Everyday use of the solvers should leave
+  this unchanged. Defaults to `true`.
 * `save_start`: Denotes whether the initial condition should be included in
   the solution type as the first timepoint. Defaults to `true`.
 * `save_end`: Denotes whether the final timepoint is forced to be saved,
@@ -223,7 +228,8 @@ options control the errors which are calculated:
   require dense output and calculate the error at 100 evenly-spaced points
   throughout `tspan`. An example is the `L2` error. Default is false.
 
-# Examples
+## Examples
+
 The following lines are examples of how one could use the configuration of
 `solve()`. For these examples a 3-dimensional ODE problem is assumed, however
 the extention to other types is straightforward.
@@ -232,12 +238,14 @@ the extention to other types is straightforward.
   algorithm (given by `AlgorithmName()`).All parameters get their default values.
   This means that the solution is saved at the steps the Algorithm stops internally
   and dense output is enabled if the chosen algorithm allows for it.
+  
   All other integration parameters (e.g. stepsize) are chosen automatically.
 2. `solve(prob, saveat = 0.01, abstol = 1e-9, reltol = 1e-9)` : Standard setting
   for accurate output at specified (and equidistant) time intervals, used for
   e.g. Fourier Transform. The solution is given every 0.01 time units,
   starting from `tspan[1]`. The solver used is Tsit5() since no keyword
   `alg_hits` is given.
+  
 3. `solve(prob, maxiters = 1e7, progress = true, save_idxs = [1])` : Using longer
   maximum number of solver iterations can be useful when a given `tspan` is very
   long. This example only saves the first of the variables of the system, either

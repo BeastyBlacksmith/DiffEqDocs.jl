@@ -9,15 +9,15 @@ These algorithms require a Partitioned ODE of the form:
 \frac{du}{dt} = f_2(v) \\
 ```
 This is a Partitioned ODE partitioned into two groups, so the functions should be
-specified as `f1(du,u,v,p,t)` and `f2(dv,u,v,p,t)` (in the inplace form), where `f1`
+specified as `f1(dv,v,u,p,t)` and `f2(du,v,u,p,t)` (in the inplace form), where `f1`
 is independent of `v` (unless specified by the solver), and `f2` is independent
 of `u` and `t`. This includes discretizations arising from
 `SecondOrderODEProblem`s where the velocity is not used in the acceleration function,
 and Hamiltonians where the potential is (or can be) time-dependent but the kinetic
 energy is only dependent on `v`.
 
-Note that some methods assume that the integral of `f1` is a quadratic form. That
-means that `f1=v'*M*v`, i.e. ``\int f_1 = \frac{1}{2} m v^2``, giving `du = v`.
+Note that some methods assume that the integral of `f2` is a quadratic form. That
+means that `f2=v'*M*v`, i.e. ``\int f_2 = \frac{1}{2} m v^2``, giving `du = v`.
 This is equivalent to saying that the kinetic energy is related to ``v^2``. The
 methods which require this assumption will lose accuracy if this assumption is
 violated. Methods listed make note of this requirement with "Requires
@@ -26,7 +26,8 @@ quadratic kinetic energy".
 ### Constructor
 
 ```julia
-DynamicalODEProblem{isinplace}(f1,f2,v0,u0,tspan,callback=CallbackSet(),mass_matrix=I)
+DynamicalODEProblem(f::DynamicalODEFunction,v0,u0,tspan,callback=CallbackSet())
+DynamicalODEProblem{isinplace}(f1,f2,v0,u0,tspan,callback=CallbackSet())
 ```
 
 Defines the ODE with the specified functions. `isinplace` optionally sets whether
@@ -39,7 +40,6 @@ the function is inplace or not. This is determined automatically, but not inferr
 * `tspan`: The timespan for the problem.
 * `callback`: A callback to be applied to every solver which uses the problem.
   Defaults to nothing.
-* `mass_matrix`: The mass-matrix. Defaults to `I`, the `UniformScaling` identity matrix.
 
 ## Mathematical Specification of a 2nd Order ODE Problem
 
@@ -68,7 +68,7 @@ is generated.
 ### Constructors
 
 ```julia
-SecondOrderODEProblem{isinplace}(f,du0,u0,tspan,callback=CallbackSet(),mass_matrix=I)
+SecondOrderODEProblem{isinplace}(f,du0,u0,tspan,callback=CallbackSet())
 ```
 
 Defines the ODE with the specified functions.
@@ -81,7 +81,6 @@ Defines the ODE with the specified functions.
 * `tspan`: The timespan for the problem.
 * `callback`: A callback to be applied to every solver which uses the problem.
   Defaults to nothing.
-* `mass_matrix`: The mass-matrix. Defaults to `I`, the `UniformScaling` identity matrix.
 
 ## Hamiltonian Problems
 
@@ -110,4 +109,3 @@ HamiltonianProblem{T}(H,p0,q0,tspan;kwargs...)
 * `tspan`: The timespan for the problem.
 * `callback`: A callback to be applied to every solver which uses the problem.
   Defaults to nothing.
-* `mass_matrix`: The mass-matrix. Defaults to `I`, the `UniformScaling` identity matrix.

@@ -14,15 +14,28 @@ integrator = init(prob,alg;kwargs...)
 ```
 
 The keyword args which are accepted are the same [Common Solver Options](@ref)
-used by `solve`. The type which is returned is the integrator. One can manually
-choose to step via the `step!` command:
+used by `solve` and the returned value is an `integrator` which satisfies
+`typeof(integrator)<:DEIntegrator`. One can manually choose to step via the `step!` command:
 
 ```julia
 step!(integrator)
 ```
 
-which will take one successful step. This type also implements an iterator interface,
-so one can step `n` times (or to the last `tstop`) using the `take` iterator:
+which will take one successful step. Additonally:
+
+```julia
+step!(integrator,dt[,stop_at_tdt=false])
+```
+
+passing a `dt` will make the integrator keep stepping until `integrator.t+dt`, and
+setting `stop_at_tdt=true` will add a `tstop` to force it to step to `integrator.t+dt`
+
+To check whether or not the integration step was successful, you can
+call `check_error(integrator)` which returns one of the
+[Return Codes (RetCodes)](@ref).
+
+This type also implements an iterator interface, so one can step `n` times 
+(or to the last `tstop`) using the `take` iterator:
 
 ```julia
 for i in take(integrator,n) end
@@ -51,20 +64,39 @@ for (tprev,uprev,u,t) in intervals(integrator)
 end
 ```
 
+Additionally, you can make the iterator return specific time points via the
+`TimeChoiceIterator`:
+
+```julia
+ts = linspace(0,1,11)
+for (u,t) in TimeChoiceIterator(integrator,ts)
+  @show u,t
+end
+```
+
 Lastly, one can dynamically control the "endpoint". The initialization simply makes
 `prob.tspan[2]` the last value of `tstop`, and many of the iterators are made to stop
 at the final `tstop` value. However, `step!` will always take a step, and one
 can dynamically add new values of `tstops` by modifiying the variable in the
 options field: `add_tstop!(integrator,new_t)`.
 
+Finally, to solve to the last `tstop`, call `solve!(integrator)`. Doing `init`
+and then `solve!` is equivalent to `solve`.
+
+```@docs
+DiffEqBase.step!
+DiffEqBase.check_error
+DiffEqBase.check_error!
+```
+
 ## Handing Integrators
 
-The `integrator` type holds all of the information for the intermediate solution
+The `integrator<:DEIntegrator` type holds all of the information for the intermediate solution
 of the differential equation. Useful fields are:
 
 * `t` - time of the proposed step
 * `u` - value at the proposed step
-* `userdata` - user-provided data type
+* `p` - user-provided data
 * `opts` - common solver options
 * `alg` - the algorithm associated with the solution
 * `f` - the function being solved
@@ -72,7 +104,7 @@ of the differential equation. Useful fields are:
 * `tprev` - the last timepoint
 * `uprev` - the value at the last timepoint
 
-The `userdata` is the type which is provided by the user as a keyword arg in
+The `p` is the data which is provided by the user as a keyword arg in
 `init`. `opts` holds all of the common solver options, and can be mutated to
 change the solver characteristics. For example, to modify the absolute tolerance
 for the future timesteps, one can do:
@@ -97,15 +129,27 @@ Instead if one wants to introduce discontinuous changes, one should use the
 [Event Handling and Callback Functions](@ref). Modifications within a callback
 `affect!` surrounded by saves provides an error-free handling of the discontinuity.
 
+As low-level alternative to the callbacks, one can use `set_t!`, `set_u!` and
+`set_ut!` to mutate integrator states.  Note that certain integrators may not
+have efficient ways to modify `u` and `t`.  In such case, `set_*!` are as
+inefficient as `reinit!`.
+
+```@docs
+DiffEqBase.set_t!
+DiffEqBase.set_u!
+DiffEqBase.set_ut!
+```
+
 ### Integrator vs Solution
 
 The integrator and the solution have very different actions because they have
-very different meanings. The `Solution` type is a type with history: it stores
+very different meanings. The `typeof(sol) <: DESolution` type is a type with 
+history: it stores
 all of the (requested) timepoints and interpolates/acts using the values closest
-in time. On the other hand, the `Integrator` type is a local object. It only knows
-the times of the interval it currently spans, the current caches and values,
-and the current state of the solver (the current options, tolerances, etc.).
-These serve very different purposes:
+in time. On the other hand, the `typeof(integrator)<:DEIntegrator` type is a 
+local object. It only knows the times of the interval it currently spans, 
+the current caches and values, and the current state of the solver 
+(the current options, tolerances, etc.). These serve very different purposes:
 
 * The `integrator`'s interpolation can extrapolate, both forward and backward in
   in time. This is used to estimate events and is internally used for predictions.
@@ -227,6 +271,7 @@ will run the auto `dt` initialization algorithm.
 
 * `get_du(integrator)`: Returns the derivative at `t`.
 * `get_du!(out,integrator)`: Write the current derivative at `t` into `out`.
+* `check_error(integrator)`: Checks error conditions and updates the retcode.
 
 #### Note
 
@@ -264,14 +309,14 @@ solve!(integrator)
 
 ## Plot Recipe
 
-Like the `Solution` type, a plot recipe is provided for the `Integrator` type.
-Since the `Integrator` type is a local state type on the current interval,
+Like the `DESolution` type, a plot recipe is provided for the `DEIntegrator` type.
+Since the `DEIntegrator` type is a local state type on the current interval,
 `plot(integrator)` returns the solution on the current interval. The same
 options for the plot recipe are provided as for `sol`, meaning one can choose
 variables via the `vars` keyword argument, or change the `plotdensity` / turn
 on/off `denseplot`.
 
-Additionally, since the `integrator` is an integrator, this can be used in the
+Additionally, since the `integrator` is an iterator, this can be used in the
 Plots.jl `animate` command to iteratively build an animation of the solution
 while solving the differential equation.
 

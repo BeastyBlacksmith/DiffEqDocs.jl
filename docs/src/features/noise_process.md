@@ -182,7 +182,7 @@ One can define a `Ornstein-Uhlenbeck` process which is a Wiener process defined
 by the stochastic differential equation
 
 ```math
-dX_t = \theta (\mu - X_t) dt + \sigma X_t dW_t
+dX_t = \theta (\mu - X_t) dt + \sigma dW_t
 ```
 
 The `OrnsteinUhlenbeckProcess` is distribution exact (meaning, not a numerical
@@ -202,6 +202,7 @@ A `NoiseProcess` is a type defined as
 NoiseProcess(t0,W0,Z0,dist,bridge;
              iip=DiffEqBase.isinplace(dist,3),
              rswm = RSWM(),save_everystep=true,timeseries_steps=1,
+             rng = Xorshifts.Xoroshiro128Plus(rand(UInt64)),
              reset = true, reseed = true)
 ```
 
@@ -214,6 +215,7 @@ NoiseProcess(t0,W0,Z0,dist,bridge;
   at new values.
 - `save_everystep` whether to save every step of the Brownian timeseries.
 - `timeseries_steps` number of points to skip between each timeseries save.
+- `rng` the local RNG used for generating the random numbers.
 - `reset` whether to reset the process with each solve.
 - `reseed` whether to reseed the process with each solve.
 

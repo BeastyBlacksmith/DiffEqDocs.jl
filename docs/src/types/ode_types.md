@@ -18,9 +18,14 @@ provide `u₀` as arbitrary matrices / higher dimension tensors as well.
 
 ### Constructors
 
-`ODEProblem{isinplace}(f,u0,tspan,callback=CallbackSet(),mass_matrix=I)` :
-Defines the ODE with the specified functions. `isinplace` optionally sets whether
-the function is inplace or not. This is determined automatically, but not inferred.
+- `ODEProblem(f::ODEFunction,u0,tspan,callback=CallbackSet())`
+- `ODEProblem{isinplace}(f,u0,tspan,callback=CallbackSet())` :
+  Defines the ODE with the specified functions. `isinplace` optionally sets whether
+  the function is inplace or not. This is determined automatically, but not inferred.
+
+For specifying Jacobians and mass matrices, see the
+[DiffEqFunctions](http://docs.juliadiffeq.org/latest/features/performance_overloads.html)
+page.
 
 ### Fields
 
@@ -29,11 +34,10 @@ the function is inplace or not. This is determined automatically, but not inferr
 * `tspan`: The timespan for the problem.
 * `callback`: A callback to be applied to every solver which uses the problem.
   Defaults to nothing.
-* `mass_matrix`: The mass-matrix. Defaults to `I`, the `UniformScaling` identity matrix.
 
 ## Example Problems
 
-Example problems can be found in [DiffEqProblemLibrary.jl](https://github.com/JuliaDiffEq/DiffEqProblemLibrary.jl/blob/master/src/ode_premade_problems.jl).
+Example problems can be found in [DiffEqProblemLibrary.jl](https://github.com/JuliaDiffEq/DiffEqProblemLibrary.jl/tree/master/src/ode).
 
 To use a sample problem, such as `prob_ode_linear`, you can do something like:
 

@@ -4,10 +4,12 @@ The `AbstractDiffEqOperator` interface is an interface for declaring parts of
 a differential equation as linear or affine. This then allows the solvers to
 exploit linearity to achieve maximal performance.
 
+### Note: this functionality is under heavy development. Interfaces may change. Treat this as experimental until the end of Summer 2018.
+
 ## Using DiffEqOperators
 
 `AbstractDiffEqOperator`s act like functions. When defined, `A` has function
-calls `A(t,u)` and `A(du,u,p,t)` that act like `A*u`. These operators update
+calls `A(u,p,t)` and `A(du,u,p,t)` that act like `A*u`. These operators update
 via a function `update_coefficients!(A,u,p,t)`.
 
 ## Constructors
@@ -18,7 +20,7 @@ via a function `update_coefficients!(A,u,p,t)`.
 operator is of the form
 
 ```math
-\alpha(t)A(t,u)
+\alpha(t)A(u,p,t)
 ```
 
 for some scalar `α` and time plus possibly state dependent `A`. The
@@ -30,9 +32,9 @@ DiffEqArrayOperator(A::AbstractMatrix{T},α=1.0,
 ```
 
 `A` is the operator array. `α` is the scalar coefficient. If `α` is a function
-`α(t)`, then it will update the coefficient as necessary. `update_func` is the
-function called by `update_coefficients!(A,u,p,t)` (along with `α` if it's a
-function). If left as its default, then `update_func` is trivial which signifies
+`α(t)`, then it will update the coefficient as necessary. `update_func(A,u,p,t)` 
+is the function called by `update_coefficients!(A,u,p,t)` (along with `α` if it's 
+a function). If left as its default, then `update_func` is trivial which signifies
 `A` is a constant.
 
 ### AffineDiffEqOperator
@@ -58,11 +60,11 @@ for it to work in the solvers.
 
 ### AbstractDiffEqOperator Interface Description
 
-1. Function call and multiplication: `L(du,u,p,t)` for inplace and `du = L(t,u)` for
+1. Function call and multiplication: `L(du,u,p,t)` for inplace and `du = L(u,p,t)` for
    out-of-place, meaning `L*u` and `A_mul_B!`.
-2. If the operator is not a constant, update it with `(u,t)`. A mutating form, i.e.
+2. If the operator is not a constant, update it with `(u,p,t)`. A mutating form, i.e.
    `update_coefficients!(A,u,p,t)` that changes the internal coefficients, and a
-   out-of-place form `B = update_coefficients(A,t,u)`.
+   out-of-place form `B = update_coefficients(A,u,p,t)`.
 3. `is_constant(A)` trait for whether the operator is constant or not.
 
 ### AbstractDiffEqLinearOpeartor Interface Description
@@ -74,7 +76,7 @@ for it to work in the solvers.
 4. `is_constant(A)` trait for whether the operator is constant or not.
 5. Optional: `diagonal`, `symmetric`, etc traits from LinearMaps.jl.
 6. Optional: `expm(A)`. Required for simple exponential integration.
-7. Optional: `expmv(A,t,u) = expm(t*A)*u` and `expmv!(v,A::DiffEqOperator,t,u)`
+7. Optional: `expmv(A,u,t) = expm(t*A)*u` and `expmv!(v,A::DiffEqOperator,u,t)`
    Required for sparse-saving exponential integration.
 8. Optional: factorizations. `A_ldiv_B`, `factorize` et. al. This is only required
    for algorithms which use the factorization of the operator (Crank-Nicholson),

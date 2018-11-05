@@ -27,9 +27,16 @@ the problem, though for large enough PDEs the `ARKODE` method with
 
 - `SplitEuler`: 1st order fully explicit method. Used for testing accuracy
   of splits.
-- `KenCarp3`: An A-L stable stiffly-accurate 3rd order ESDIRK method
-- `KenCarp4`: An A-L stable stiffly-accurate 4rd order ESDIRK method
-- `KenCarp5`: An A-L stable stiffly-accurate 5rd order ESDIRK method
+- `IMEXEuler` : 1st order explicit Euler mixed with implicit Euler. Fixed time
+  step only.
+- `CNAB2`: Crank-Nicholson Adams Bashforth Order 2. Fixed time step only.
+- `CNLF`: Crank-Nicholson Leapfrog of Order 2. Fixed time step only.
+- `SBDF2` : 2nd order IMEX BDF method. Fixed time step only.
+- `SBDF3` : 3rd order IMEX BDF method. Fixed time step only. In development.
+- `SBDF4` : 4th order IMEX BDF method. Fixed time step only. In development.
+- `KenCarp3`: An A-L stable stiffly-accurate 3rd order ESDIRK method.
+- `KenCarp4`: An A-L stable stiffly-accurate 4rd order ESDIRK method.
+- `KenCarp5`: An A-L stable stiffly-accurate 5rd order ESDIRK method.
 
 ### Sundials.jl
 
@@ -39,33 +46,57 @@ the problem, though for large enough PDEs the `ARKODE` method with
 
 ## Semilinear ODE
 
-The Semilinear ODE is a split `ODEProblem` with one linear operator and one function:
+The Semilinear ODE is a `SplitODEProblem` with one linear operator and one nonlinear function:
 
 ```math
 \frac{du}{dt} =  Au + f(t,u)
 ```
 
-where the first function is a constant (not time dependent)`AbstractDiffEqOperator`
-and the second part is a (nonlinear) function.
-[../../features/diffeq_operator.html](See the DiffEqOperator page for details).
+See the documentation page for [DiffEqOperator](../../features/diffeq_operator.html)
+for details about how to define linear operators from a matrix or finite difference
+discretization of derivative operators.
 
 The appropriate algorithms for this form are:
 
 ### OrdinaryDiffEq.jl
 
-These methods utilize caching of the exponential operators and are thus are faster than
-Krylov-based methods but are only suited for smaller systems where `expm(dt*A)` can fit
-in memory.
-
-- `GenericIIF1` - First order Implicit Integrating Factor method. Fixed timestepping only.
-- `GenericIIF2` - Second order Implicit Integrating Factor method. Fixed timestepping only.
-- `ETD1` - First order Exponential Time Differencing method. Not yet implemented.
-- `ETD2` - Second order Exponential Time Differencing method. Not yet implemented.
+- `GenericIIF1` - First order Implicit Integrating Factor method. Fixed timestepping only. Doesn't support Krylov approximation.
+- `GenericIIF2` - Second order Implicit Integrating Factor method. Fixed timestepping only. Doesn't support Krylov approximation.
 - `LawsonEuler` - First order exponential Euler scheme. Fixed timestepping only.
-- `NorsettEuler` - First order exponential-RK scheme. Fixed timestepping only.
+- `NorsettEuler` - First order exponential-RK scheme. Fixed timestepping only. Alias: `ETD1`.
+- `ETD2` - Second order Exponential Time Differencing method (in development). Fixed timestepping only. Doesn't support Krylov approximation.
+- `ETDRK2` - 2nd order exponential-RK scheme. Fixed timestepping only.
+- `ETDRK3` - 3rd order exponential-RK scheme. Fixed timestepping only.
 - `ETDRK4` - 4th order exponential-RK scheme. Fixed timestepping only.
+- `HochOst4` - 4th order exponential-RK scheme with stiff order 4. Fixed
+  timestepping only.
+- `Exprb32` - 3rd order adaptive Exponential Rosenbrock scheme (in development).
+- `Exprb43` - 4th order adaptive Exponential Rosenbrock scheme (in development).
 
-Note that the generic algorithms allow for a choice of `nlsolve`.
+Note that the generic algorithms `GenericIIF1` and `GenericIIF2` allow for a choice of `nlsolve`.
 
-Additional Krylov-based methods which allow for lazy calculation of `expm(dt*A)*v` are in
-development.
+By default, the exponential methods cache matrix functions such as `exp(dt*A)` to accelerate
+the time stepping for small systems. For large systems, using Krylov-based versions of the
+methods can allow for lazy calculation of `exp(dt*A)*v` and similar entities, and thus improve
+performance.
+
+To tell a solver to use Krylov methods, pass `krylov=true` to its constructor. You
+can also manually set the size of the Krylov subspace by setting the `m` parameter, which
+defaults to 30. For example
+
+```julia
+LawsonEuler(krylov=true, m=50)
+```
+
+constructs a Lawson-Euler method which uses a size-50 Krylov subspace. Note that `m`
+only sets an upper bound to the Krylov subspace size. If a convergence criterion is met
+(determined by the `reltol` of the integrator), "happy breakdown" will occur and the
+Krylov subspace will only be constructed partially.
+
+For more advanced control over the Krylov algorithms, you can change the length of the
+incomplete orthogonalization procedure (IOP) [^1] by setting the `iop` parameter in the
+constructor. By default, IOP is turned off and full Arnoldi iteration is used. Note that
+if the linear operator is hermitian, then the Lanczos algorithm will always be used and
+IOP setting is ignored.
+
+[^1]: Koskela, A. (2015). Approximating the matrix exponential of an advection-diffusion operator using the incomplete orthogonalization method. In Numerical Mathematics and Advanced Applications-ENUMATH 2013 (pp. 345-353). Springer, Cham.

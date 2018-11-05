@@ -94,6 +94,10 @@ using IJulia
 notebook(dir = Pkg.dir("DiffEqTutorials"))
 ```
 
+### Video Tutorial
+
+[![Video Tutorial](https://user-images.githubusercontent.com/1814174/36342812-bdfd0606-13b8-11e8-9eff-ff219de909e5.PNG)](https://youtu.be/KPEqYtEd-zY)
+
 ### Tutorials
 
 The following tutorials will introduce you to the functionality of
@@ -127,6 +131,7 @@ Pages = [
     "basics/solution.md",
     "basics/plot.md",
     "basics/integrator.md",
+    "basics/problem.md",
     "basics/faq.md",
     "basics/compatibility_chart.md"
     ]
@@ -168,6 +173,7 @@ Pages = [
   "solvers/split_ode_solve.md",
   "solvers/steady_state_solve.md",
   "solvers/bvp_solve.md",
+  "solvers/jump_solve.md",
   "solvers/sde_solve.md",
   "solvers/rode_solve.md",
   "solvers/dde_solve.md",
@@ -249,6 +255,8 @@ Depth = 2
 
 ## Acknowledgements
 
+#### Core Contributors
+
 JuliaDiffEq and DifferentialEquations.jl has been a collaborative effort by many
 individuals. Significant contributions have been made by the following individuals:
 
@@ -256,8 +264,15 @@ individuals. Significant contributions have been made by the following individua
 - Yingbo Ma (@YingboMa)
 - David Widmann (@devmotion)
 - Hendrik Ranocha (@ranocha)
-- Shivin Srivastava (@shivin9)
-- Ayush Pandey (@Ayush-iitkgp)
 - Ethan Levien (@elevien)
 - Tom Short (@tshort)
 - @dextorious
+
+#### Google Summer of Code Alumni
+
+- Yingbo Ma (@YingboMa)
+- Shivin Srivastava (@shivin9)
+- Ayush Pandey (@Ayush-iitkgp)
+- Xingjian Guo (@MSeeker1340)
+- Shubham Maddhashiya (@sipah00)
+- Vaibhav Kumar Dixit (@Vaibhavdixit02)

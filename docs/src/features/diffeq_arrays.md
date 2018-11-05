@@ -42,11 +42,12 @@ arrays will be:
 
 ```julia
 using Unitful, RecursiveArrayTools, DiffEqBase, OrdinaryDiffEq
+using LinearAlgebra
 
 r0 = [1131.340, -2282.343, 6672.423]u"km"
 v0 = [-5.64305, 4.30333, 2.42879]u"km/s"
 Δt = 86400.0*365u"s"
-mu = 398600.4418u"km^3/s^2"
+μ = 398600.4418u"km^3/s^2"
 rv0 = ArrayPartition(r0,v0)
 ```
 
@@ -55,7 +56,7 @@ is the `ArrayPartition` initial condition. We now write our update function in
 terms of the `ArrayPartition`:
 
 ```julia
-function f(t, y, dy, μ)
+function f(dy, y, μ, t)
     r = norm(y.x[1])
     dy.x[1] .= y.x[2]
     dy.x[2] .= -μ .* y.x[1] / r^3
@@ -70,7 +71,7 @@ broadcasting will be efficient.
 Now to solve our equations, we do the same thing as always in DiffEq:
 
 ```julia
-prob = ODEProblem((t, y, dy) -> f(t, y, dy, mu), rv0, (0.0u"s", Δt))
+prob = ODEProblem(f, rv0, (0.0u"s", Δt), μ)
 sol = solve(prob, Vern8())
 ```
 
@@ -92,7 +93,7 @@ like the differential equation to treat directly. The other fields are treated
 as "discrete variables". For example:
 
 ```julia
-type MyDataArray{T,N} <: DEDataArray{T,N}
+mutable struct MyDataArray{T,N} <: DEDataArray{T,N}
     x::Array{T,1}
     a::T
     b::Symbol
@@ -127,7 +128,7 @@ In this example we will use a `DEDataArray` to solve a problem where control par
 change at various timepoints. First we will build
 
 ```julia
-type SimType{T} <: DEDataVector{T}
+mutable struct SimType{T} <: DEDataVector{T}
     x::Array{T,1}
     f1::T
 end
@@ -154,11 +155,11 @@ const tstop1 = [5.]
 const tstop2 = [8.]
 
 
-function condition(u,p,t,integrator)
+function condition(u,t,integrator)
   t in tstop1
 end
 
-function condition2(u,p,t,integrator)
+function condition2(u,t,integrator)
   t in tstop2
 end
 ```

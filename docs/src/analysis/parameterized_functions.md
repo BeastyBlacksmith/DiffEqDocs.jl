@@ -23,7 +23,7 @@ This looks just like pseudocode! The macro will expand this to the "standard for
 i.e. the ugly computer form:
 
 ```julia
-f = (t,u,du) -> begin
+function f(du,u,p,t)
   du[1] = -p[1]*u[1] + p[3]*u[2]*u[3]
   du[2] = p[1]*u[1] - p[2]*u[2]^2 - p[3]*u[2]*u[3]
   du[3] = p[2]*u[2]^2
@@ -32,13 +32,13 @@ end
 
 Note that one doesn't need to use numbered variables: DifferentialEquations.jl
 will number the variables for you. For example, the following defines the function
-for the Lotka-Volterra model:
+for the Lotka-Volterra model, with full Unicode support to boot:
 
 ```julia
 f = @ode_def LotkaVolterraExample begin
-  dx = a*x - b*x*y
-  dy = -c*y + d*x*y
-end a b c d
+  d🐁  = α*🐁  - β*🐁*🐈
+  d🐈 = -γ*🐈 + δ*🐁*🐈
+end α β γ δ
 ```
 
 ### Limitations

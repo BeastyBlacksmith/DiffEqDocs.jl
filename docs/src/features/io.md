@@ -83,19 +83,19 @@ CSV.write("out.csv",df)
 For more information on using the IterableTables interface and other output
 formats, see [IterableTables.jl](https://github.com/davidanthoff/IterableTables.jl).
 
-## JLD2
+## JLD2 and BSON.jl
 
-JLD2 will work with the full solution type if you bring the required functions
+JLD2.jl and BSON.jl will work with the full solution type if you bring the required functions
 back into scope before loading. For eaxmple, if we save the solution:
 
 ```julia
-using OrdinaryDiffEq, JLD, JLD2
+using OrdinaryDiffEq, JLD2
 f(u,p,t) = 1.01*u
 u0=1/2
 tspan = (0.0,1.0)
 prob = ODEProblem(f,u0,tspan)
 sol = solve(prob,Tsit5(),reltol=1e-8,abstol=1e-8)
-JLD2.@save "out.jld2" sol
+@save "out.jld2" sol
 ```
 
 then we can get the full solution type back, interpolations and all,
@@ -106,6 +106,23 @@ using JLD2
 using OrdinaryDiffEq
 f(u,p,t) = 1.01*u
 JLD2.@load "out.jld2" sol
+```
+
+The example with BSON.jl is:
+
+```julia
+using OrdinaryDiffEq
+f_2dlinear = (du,u,p,t) -> du.=1.01u
+prob = ODEProblem(f_2dlinear,rand(2,2),(0.0,1.0))
+sol1 =solve(prob,Euler();dt=1//2^(4))
+
+using BSON
+bson("test.bson",Dict(:sol1=>sol1))
+
+# New session
+using OrdinaryDiffEq
+using BSON
+BSON.load("test.bson")
 ```
 
 If you load it without the DE function then for some algorithms the

@@ -1,9 +1,7 @@
 # Parameter Estimation
 
 Parameter estimation for ODE models, also known as dynamic data analysis,
-is provided by the DiffEq suite. Note these require that the problem is
-defined using a
-[ParameterizedFunction](https://github.com/JuliaDiffEq/ParameterizedFunctions.jl).
+is provided by the DiffEq suite.
 
 ## Recommended Methods
 
@@ -59,11 +57,21 @@ function build_loss_objective(prob::DEProblem,alg,loss_func
 The first argument is the `DEProblem` to solve, and next is the `alg` to use.
 The `alg` must match the problem type, which can be any `DEProblem`
 (ODEs, SDEs, DAEs, DDEs, etc.). `regularization` defaults to nothing
-which has no regulariztion function. One can also choose `verbose_opt` and
+which has no regularization function. One can also choose `verbose_opt` and
 `verbose_steps`, which, in the optimization routines, will print the steps
 and the values at the steps every `verbose_steps` steps. `mpg_autodiff` uses
 autodifferentiation to define the derivative for the MathProgBase solver.
 The extra keyword arguments are passed to the differential equation solver.
+
+### multiple_shooting_objective
+
+Multiple Shooting is generally used in Boundary Value Problems (BVP) and is more robust than the regular objective function used in these problems. It proceeds as follows:
+    
+  1. Divide up the time span into short time periods and solve the equation with the current parameters which here consist of both, the parameters of the differential equations and also the initial values for the short time periods.
+  2. This objective additionally involves a dicontinuity error term that imposes higher cost if the end of the solution of one time period doesn't match the begining of the next one.
+  3. Merge the solutions from the shorter intervals and then calculate the loss.
+
+For consistency `multiple_shooting_objective` takes exactly the same arguments as `build_loss_objective`. It also has the option for `discontinuity_error` as a kwarg which assigns weight to te error occuring due to the discontinuity that arises from the breaking up of the time span.
 
 #### The Loss Function
 
@@ -78,15 +86,12 @@ cost functions:
 
 ```julia
 L2Loss(t,data;weight=nothing)
-CostVData(t,data;loss_func = L2Loss,weight=nothing)
-
 ```
 
 where `t` is the set of timepoints which the data is found at, and
 `data` are the values that are known where each column corresponds to measures
 of the values of the system. `L2Loss` is an optimized version
-of the L2-distance. In `CostVData`, one can choose any loss function from
-LossFunctions.jl or use the default of an L2 loss. The `weight` is a vector
+of the L2-distance. The `weight` is a vector
 of weights for the loss function which must match the size of the data.
 Note that minimization of a weighted `L2Loss` is equivalent to maximum
 likelihood estimation of a heteroskedastic Normally distributed likelihood.
@@ -114,7 +119,7 @@ against some chosen distribution type.
 
 For parameter estimation problems, it's not uncommon for the optimizers to hit
 unstable regions of parameter space. This causes warnings that the solver exited
-early, and the built-in loss functions like `L2Loss` and `CostVData`
+early, and the built-in loss functions like `L2Loss`
 automatically handle this. However, if using a user-supplied loss function,
 you should make sure it's robust to these issues. One common pattern is to
 apply infinite loss when the integration is not successful. Using the retcodes,
@@ -131,6 +136,15 @@ function my_loss_function(sol)
    tot_loss
 end
 ```
+#### First differencing
+
+```julia 
+L2Loss(t,data,differ_weight=0.3,data_weight=0.7)
+```
+
+First differencing incorporates the differences of data points at consecutive time points which adds more information about the trajectory in the loss function. You can now assign a weight (vector or scalar) to use the first differencing technique in the `L2loss`.
+
+Adding first differencing is helpful in cases where the `L2Loss` alone leads to non-identifiable parameters but adding a first differencing term makes it more identifiable. This can be noted on stochastic differential equation models, where this aims to capture the autocorrelation and therefore helps us avoid getting the same stationary distribution despite different trajectories and thus wrong parameter estimates.
 
 #### The Regularization Function
 
@@ -155,24 +169,22 @@ The regularization defaults to L2 if no penalty function is specified.
 
 The argument `prob_generator` allows one to specify a function for generating
 new problems from a given parameter set. By default, this just builds a new
-version of `f` that inserts all of the parameters. For example, for ODEs this
+problem which fixes the element types in a way that's autodifferentiation
+compatible and adds the new parameter vector `p`. For example, for ODEs this
 is given by the dispatch on `DiffEqBase.problem_new_parameters` which does the
 following:
 
 ```julia
-function problem_new_parameters(prob::ODEProblem,p)
-  f = (du,u,p,t) -> prob.f(du,u,p,t)
+function problem_new_parameters(prob::ODEProblem,p;kwargs...)
   uEltype = eltype(p)
   u0 = [uEltype(prob.u0[i]) for i in 1:length(prob.u0)]
   tspan = (uEltype(prob.tspan[1]),uEltype(prob.tspan[2]))
-  ODEProblem(f,u0,tspan)
+  ODEProblem{isinplace(prob)}(prob.f,u0,tspan,p,prob.problem_type;
+  callback = prob.callback, mass_matrix = prob.mass_matrix,
+  kwargs...)
 end
 ```
-
-`f = (t,u,du) -> prob.f(du,u,p,t)` creates a new version of `f` that encloses
-the new parameters. The element types for `u0` and `tspan` are set to match the
-parameters. This is required to make autodifferentiation work. Then the new
-problem with these new values is returned.
+Then the new problem with these new values is returned.
 
 One can use this to change the meaning of the parameters using this function. For
 example, if one instead wanted to optimize the initial conditions for a function
@@ -215,6 +227,14 @@ lm_fit(prob::DEProblem,tspan,t,data,p0;prob_generator = problem_new_parameters,k
 The arguments are similar to before, but with `p0` being the initial conditions
 for the parameters and the `kwargs` as the args passed to the LsqFit `curve_fit`
 function (which is used for the LM solver). This returns the fitted parameters.
+
+### MAP estimate 
+
+You can also add a prior option to `build_loss_objective` and `multiple_shooting_objective` that essentially turns it into MAP by multiplying the loglikelihood (the cost) by the prior. The option was added as a keyword argument `priors`, it can take in either an array of univariate distributions for each of the parameters or a multivariate distribution. 
+
+```julia
+ms_obj = multiple_shooting_objective(ms_prob,Tsit5(),L2Loss(t,data);priors=priors,discontinuity_weight=1.0,abstol=1e-12,reltol=1e-12)
+```
 
 ## Bayesian Methods
 
@@ -269,6 +289,45 @@ type. `num_samples` is the number of samples per MCMC chain. `epsilon` and `tau`
 are the HMC parameters. The extra `kwargs` are given to the internal differential
 equation solver.
 
+### dynamichmc_inference
+
+```julia
+dynamichmc_inference(prob::DEProblem,alg,t,data,priors,transformations;
+                      σ = 0.01,ϵ=0.001,initial=Float64[])
+```
+
+`dynamichmc_inference` uses [DynamicHMC.jl](https://github.com/tpapp/DynamicHMC.jl) to 
+ perform the bayesian parameter estimation. `prob` can be any `DEProblem`, `data` is the set 
+ of observations for our model whihc is to be used in the Bayesian Inference process. `priors` represent the 
+ choice of prior distributions for the parameters to be determined, passed as an array of [Distributions.jl]
+ (https://juliastats.github.io/Distributions.jl/latest/) distributions. `t` is the array of time points. `transformations`
+ is an array of [Tranformations](https://github.com/tpapp/ContinuousTransformations.jl) imposed for constraining the 
+ parameter values to specific domains. `initial` values for the parameters can be passed, if not passed the means of the
+ `priors` are used. `ϵ` can be used as a kwarg to pass the initial step size for the NUTS algorithm.      
+ 
+### abc_inference
+
+```julia
+abc_inference(prob::DEProblem, alg, t, data, priors; ϵ=0.001,
+     distancefunction = euclidean, ABCalgorithm = ABCSMC, progress = false,
+     num_samples = 500, maxiterations = 10^5, kwargs...)
+```
+
+`abc_inference` uses [ApproxBayes.jl](https://github.com/marcjwilliams1/ApproxBayes.jl) which uses Approximate Bayesian Computation (ABC) to
+perform its parameter inference. `prob` can be any `DEProblem` with a corresponding
+`alg` choice. `t` is the array of time points and `data[:,i]` is the set of
+observations for the differential equation system at time point `t[i]` (or higher
+dimensional). `priors` is an array of prior distributions for each
+parameter, specified via a
+[Distributions.jl](https://juliastats.github.io/Distributions.jl/latest/)
+type. `num_samples` is the number of posterior samples. `ϵ` is the target
+distance between the data and simulated data. `distancefunction` is a distance metric specified from the
+[Distances.jl](https://github.com/JuliaStats/Distances.jl)
+package, the default is `euclidean`. `ABCalgorithm` is the ABC algorithm to use, options are `ABCSMC` or `ABCRejection` from
+[ApproxBayes.jl](https://github.com/marcjwilliams1/ApproxBayes.jl), the default
+is the former which is more efficient. `maxiterations` is the maximum number of iterations before the algorithm terminates. The extra `kwargs` are given to the internal differential
+equation solver.
+
 ## Optimization-Based ODE Inference Examples
 
 ### Simple Local Optimization
@@ -292,7 +351,7 @@ We create data using the numerical result with `a=1.5`:
 
 ```julia
 sol = solve(prob,Tsit5())
-t = collect(linspace(0,10,200))
+t = collect(range(0,stop=10,length=200))
 using RecursiveArrayTools # for VectorOfArray
 randomized = VectorOfArray([(sol(t[i]) + .01randn(2)) for i in 1:length(t)])
 data = convert(Array,randomized)
@@ -328,14 +387,14 @@ Before optimizing, let's visualize our cost function by plotting it for a range
 of parameter values:
 
 ```julia
-range = 0.0:0.1:10.0
+vals = 0.0:0.1:10.0
 using Plots; plotly()
-plot(range,[cost_function(i) for i in range],yscale=:log10,
+plot(vals,[cost_function(i) for i in vals],yscale=:log10,
      xaxis = "Parameter", yaxis = "Cost", title = "1-Parameter Cost Function",
      lw = 3)
 ```
 
-![1 Parmaeter Likelihood](../assets/1paramcost.png)
+![1 Parameter Likelihood](../assets/1paramcost.png)
 
 Here we see that there is a very well-defined minimum in our cost function at
 the real parameter (because this is where the solution almost exactly fits the
@@ -375,7 +434,7 @@ which improves the efficiency of our algorithm:
 ```julia
 lower = [0.0]
 upper = [3.0]
-result = optimize(obj, [1.42], lower, upper, Fminbox{BFGS}())
+result = optimize(cost_function, [1.42], lower, upper, Fminbox{BFGS}())
 ```
 
 Lastly, we can use the same tools to estimate multiple parameters simultaneously.
@@ -396,7 +455,7 @@ prob = ODEProblem(f2,u0,tspan,p)
 We can build an objective function and solve the multiple parameter version just as before:
 
 ```julia
-cost_function = build_loss_objective(prob,Tsit5(),CostVData(t,data),
+cost_function = build_loss_objective(prob,Tsit5(),L2Loss(t,data),
                                       maxiters=10000,verbose=false)
 result_bfgs = Optim.optimize(cost_function, [1.3,0.8,2.8,1.2], Optim.BFGS())
 ```
@@ -404,7 +463,7 @@ result_bfgs = Optim.optimize(cost_function, [1.3,0.8,2.8,1.2], Optim.BFGS())
 To solve it using LeastSquaresOptim.jl, we use the `build_lsoptim_objective` function:
 
 ```julia
-cost_function = build_lsoptim_objective(prob,Tsit5(),L2Loss(t,data))
+cost_function = build_lsoptim_objective(prob1,t,data,Tsit5())
 ```
 
 The result is a cost function which can be used with LeastSquaresOptim. For more
@@ -414,8 +473,7 @@ details, consult the [documentation for LeastSquaresOptim.jl](https://github.com
 x = [1.3,0.8,2.8,1.2]
 res = optimize!(LeastSquaresProblem(x = x, f! = cost_function,
                 output_length = length(t)*length(prob.u0)),
-                LeastSquaresOptim.Dogleg(),LeastSquaresOptim.LSMR(),
-                ftol=1e-14,xtol=1e-15,iterations=100,grtol=1e-14)
+                LeastSquaresOptim.Dogleg(),LeastSquaresOptim.LSMR())
 ```
 
 We can see the results are:
@@ -439,6 +497,56 @@ Results of Optimization Algorithm
 
 and thus this algorithm was able to correctly identify all four parameters.
 
+We can also use Multiple Shooting method by creating a `multiple_shooting_objective`
+
+```julia
+ms_f = @ode_def_nohes LotkaVolterraTest begin
+    dx = a*x - b*x*y
+    dy = -3*y + x*y
+end a b 
+ms_u0 = [1.0;1.0]
+tspan = (0.0,10.0)
+ms_p = [1.5,1.0]
+ms_prob = ODEProblem(ms_f,ms_u0,tspan,ms_p)
+t = collect(linspace(0,10,200))
+data = Array(solve(ms_prob,Tsit5(),saveat=t,abstol=1e-12,reltol=1e-12))
+bound = Tuple{Float64, Float64}[(0, 10),(0, 10),(0, 10),(0, 10),
+                                (0, 10),(0, 10),(0, 10),(0, 10),
+                                (0, 10),(0, 10),(0, 10),(0, 10),
+                                (0, 10),(0, 10),(0, 10),(0, 10),(0, 10),(0, 10)]
+
+
+ms_obj = multiple_shooting_objective(ms_prob,Tsit5(),L2Loss(t,data);discontinuity_weight=1.0,abstol=1e-12,reltol=1e-12)
+```
+
+This creates the objective function that can be passed to an optimizer from which we can then get the parameter values and the initial values of the short time periods keeping in mind the indexing.
+
+```julia
+result = bboptimize(ms_obj;SearchRange = bound, MaxSteps = 21e3)
+result.archive_output.best_candidate[end-1:end]
+```
+Giving us the results as
+```julia
+Starting optimization with optimizer BlackBoxOptim.DiffEvoOpt{BlackBoxOptim.FitPopulation{Float64},BlackBoxOptim.RadiusLimitedSelector,BlackBoxOptim.AdaptiveDiffEvoRandBin{3},BlackBoxOptim.RandomBound{BlackBoxOptim.RangePerDimSearchSpace}}
+
+Optimization stopped after 21001 steps and 136.60030698776245 seconds
+Termination reason: Max number of steps (21000) reached
+Steps per second = 153.7405036862868
+Function evals per second = 154.43596332393247
+Improvements/step = 0.17552380952380953
+Total function evaluations = 21096
+
+
+Best candidate found: [0.997396, 1.04664, 3.77834, 0.275823, 2.14966, 4.33106, 1.43777, 0.468442, 6.22221, 0.673358, 0.970036, 2.05182, 2.4216, 0.274394, 5.64131, 3.38132, 1.52826, 1.01721]
+
+Fitness: 0.126884213
+
+Out[4]:2-element Array{Float64,1}:
+        1.52826
+        1.01721
+```
+Here as our model had 2 parameters, we look at the last two indexes of `result` to get our parameter values and the rest of the values are the initial values of the shorter timespans as described in the reference section.
+
 ### More Algorithms (Global Optimization) via MathProgBase Solvers
 
 The `build_loss_objective` function builds an objective function which is able
@@ -458,7 +566,7 @@ p = [1.5]
 prob = ODEProblem(f,u0,tspan,p)
 sol = solve(prob,Tsit5())
 
-t = collect(linspace(0,10,200))
+t = collect(range(0,stop=10,range=200))
 randomized = VectorOfArray([(sol(t[i]) + .01randn(2)) for i in 1:length(t)])
 data = convert(Array,randomized)
 
@@ -615,7 +723,7 @@ plot(range,[obj([i,1.0]) for i in range],lw=3,
      xlabel = "Parameter 1", ylabel = "Objective Function Value")
 ```
 
-![1 Parmaeter Likelihood](../assets/1paramlike.png)
+![1 Parameter Likelihood](../assets/1paramlike.png)
 
 we can see that there's still a clear minimum at the true value. Thus we will
 use the global optimizers from BlackBoxOptim.jl to find the values. We set our
@@ -871,3 +979,53 @@ The chain for the `i`th parameter is then given by:
 ```julia
 bayesian_result[:theta1]
 ```
+
+Summary statistics can be also be accessed:
+```julia
+Mamba.describe(bayesian_result)
+```
+
+The chain can be analysed by the trace plots and other plots obtained by:
+
+```julia
+plot_chain(bayesian_result)
+```
+
+### DynamicHMC
+
+We can use [DynamicHMC.jl](https://github.com/tpapp/DynamicHMC.jl) as the backend
+for sampling with the `dynamic_inference` function. It supports any `DEProblem`, 
+`priors` can be passed as an array of [Distributions.jl](https://juliastats.github.io/Distributions.jl/latest/)
+distributions, passing `initial` values is optional and in case where the user has a firm understanding of the 
+domain the parameter values will lie in, `tranformations` can be used to pass an array of constraints for the parameters
+as an array of [Transformations](https://github.com/tpapp/ContinuousTransformations.jl).
+
+```julia
+bayesian_result_hmc = dynamichmc_inference(prob1, Tsit5(), t, data, [Normal(1.5, 1)], [bridge(ℝ, ℝ⁺, )])
+```
+
+A tuple with summary statistics and the chain values is returned.
+The chain for the `i`th parameter is given by:
+
+```julia
+bayesian_result_hmc[1][i]
+```
+For accessing the various summary statistics:
+
+```julia
+DynamicHMC.NUTS_statistics(bayesian_result_dynamic[2])
+```
+Some details about the NUTS sampler can be obtained from:
+
+```julia
+bayesian_result_dynamic[3]
+```
+
+In case of `dynamic_inference` the trace plots for the `i`th parameter can be obtained by:
+
+```julia
+plot(bayesian_result_hmc[1][i])
+```
+
+For a better idea of the summary statistics and plotting you can take a look at the benchmark
+[notebooks](https://github.com/JuliaDiffEq/DiffEqBenchmarks.jl/tree/master/ParameterEstimation)

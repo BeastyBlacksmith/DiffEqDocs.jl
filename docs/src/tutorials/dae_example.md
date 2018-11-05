@@ -9,7 +9,7 @@ In this example we will solve the implicit ODE equation
 f(du,u,p,t) = 0
 ```
 
-where `f` is the a variant of the Roberts equation. This equations is actually of
+where `f` is the a variant of the Roberts equation. This equation is of
 the form
 
 ```math
@@ -35,7 +35,7 @@ with initial conditions ``y_1(0) = 1``, ``y_2(0) = 0``, ``y_3(0) = 0``,
 
 The workflow for DAEs is the same as for the other types of equations, where all
 you need to know is how to define the problem. A DAEProblem is specified by defining
-an in-place update `f(u,p,t,du,out)` which uses the values to mutate `out` as the
+an in-place update `f(out,du,u,p,t)` which uses the values to mutate `out` as the
 output. To makes this into a DAE, we move all of the variables to one side.
 Thus we can define the function:
 
@@ -60,7 +60,7 @@ and make the DAEProblem:
 ```julia
 using DifferentialEquations
 differential_vars = [true,true,false]
-prob = DAEProblem(f,u₀,du₀,tspan,differential_vars=differential_vars)
+prob = DAEProblem(f,du₀,u₀,tspan,differential_vars=differential_vars)
 ```
 
 `differential_vars` is an option which states which of the variables are differential,
@@ -75,11 +75,17 @@ and plot. Here we will use the IDA solver from Sundials:
 
 ```julia
 sol = solve(prob,IDA())
-using Plots; plotly() # Using the Plotly backend
-plot(sol)
 ```
 
-which, despite how interesting the model looks, produces a relatively simple
-output:
+In order to clearly see all the features of this solution, it should be plotted
+on a logarithmic scale. We'll also plot each on a different subplot to allow
+scaling the y-axis appropriately.
+
+```julia
+using Plots; plotly() # Using the Plotly backend
+plot(sol, xscale=:log10, tspan=(1e-6, 1e5), layout=(3,1))
+```
+
+This gives the following plot:
 
 ![IntroDAEPlot](../assets/intro_dae_plot.png)

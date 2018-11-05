@@ -9,7 +9,7 @@ condition ``u₀`` which define an ODE:
 0 = f(du,u,p,t)
 ```
 
-`f` should be specified as `f(du,u,p,t)` (or in-place as `f(resid,u,p,t,du)`).
+`f` should be specified as `f(du,u,p,t)` (or in-place as `f(resid,du,u,p,t)`).
 Note that we are not limited to numbers or vectors for `u₀`; one is allowed to
 provide `u₀` as arbitrary matrices / higher dimension tensors as well.
 
@@ -17,9 +17,14 @@ provide `u₀` as arbitrary matrices / higher dimension tensors as well.
 
 ### Constructors
 
-`DAEProblem{isinplace}(f,du0,u0,tspan)` : Defines the DAE with the specified functions.
-`isinplace` optionally sets whether the function is inplace or not. This is
-determined automatically, but not inferred.
+- `DAEProblem(f::DAEFunction,du0,u0,tspan)`
+- `DAEProblem{isinplace}(f,du0,u0,tspan)` : Defines the DAE with the specified functions.
+  `isinplace` optionally sets whether the function is inplace or not. This is
+  determined automatically, but not inferred.
+
+For specifying Jacobians and mass matrices, see the
+[DiffEqFunctions](http://docs.juliadiffeq.org/latest/features/performance_overloads.html)
+page.
 
 ### Fields
 

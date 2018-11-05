@@ -2,6 +2,8 @@
 
 This tutorial will introduce you to the functionality for solving ODEs. Other
 introductions can be found by [checking out DiffEqTutorials.jl](https://github.com/JuliaDiffEq/DiffEqTutorials.jl).
+Additionally, a [video tutorial](https://youtu.be/KPEqYtEd-zY) walks through
+this material.
 
 ## Example 1 : Solving Scalar Equations
 
@@ -42,7 +44,7 @@ Pkg.status("DifferentialEquations")
 
 should return a version higher than `v4.0.0`. If not, `Pkg.update()` to
 get the latest versions. If that does not work, then there is some other
-package upper bounding the allowed version of DifferentialEqautions.jl. 
+package upper bounding the allowed version of DifferentialEqautions.jl.
 The changes are described at length here:
 
 http://juliadiffeq.org/2018/01/24/Parameters.html
@@ -160,6 +162,8 @@ sol = solve(prob,Tsit5(),reltol=1e-8,abstol=1e-8)
 
 In DifferentialEquations.jl, some good "go-to" choices for ODEs are:
 
+- `AutoTsit5(Rosenbrock23())` handles both stiff and non-stiff equations. This
+  is a good algorithm to use if you know nothing about the equation.
 - `BS3()` for fast low accuracy non-stiff.
 - `Tsit5()` for standard non-stiff. This is the first algorithm to try in
   most cases.
@@ -283,7 +287,7 @@ you write a function which updates a vector that is designated to hold the solut
 By doing this, DifferentialEquations.jl's solver packages are able to reduce the
 amount of array allocations and achieve better performance.
 
-The way we do this is we simply write the output to the 3rd input of the function.
+The way we do this is we simply write the output to the 1st input of the function.
 For example, our Lorenz equation problem would be defined by the function:
 
 ```julia
@@ -323,7 +327,7 @@ plot(sol,vars=(0,2))
 
 ![Lorenz Timeseries](../assets/lorenz_timeseries.png)
 
-Note that here "variable 0" corresponds to the dependent variable ("time").
+Note that here "variable 0" corresponds to the independent variable ("time").
 
 ## Defining Parameterized Functions
 
@@ -379,6 +383,7 @@ problem.
 ```julia
 u0 = [1.0;0.0;0.0]
 tspan = (0.0,1.0)
+p = [10.0,28.0,8/3]
 prob = ODEProblem(g,u0,tspan,p)
 ```
 

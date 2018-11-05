@@ -75,7 +75,7 @@ mean of the variable in time, and `var(sol,2)` is the variance. Other statistica
 functions and packages which work on `AbstractArray` types will work on the
 solution type.
 
-At anytime, a true `Array` can be created using `convert(Array,sol)`.
+At anytime, a true `Array` can be created using `Array(sol)`.
 
 ## Interpolations
 
@@ -122,7 +122,7 @@ Using the `tuples(sol)` function, we can get a tuple for the output at each
 timestep. This allows one to do the following:
 
 ```julia
-[t+2u for (t,u) in tuples(sol)]
+[t+2u for (u,t) in tuples(sol)]
 ```
 
 One can use the extra components of the solution object as well as using `zip`. For

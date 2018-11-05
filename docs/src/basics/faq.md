@@ -53,7 +53,7 @@ apply. What you want to do first is make sure your function does not allocate.
 If your system is small (`<=100` ODEs/SDEs/DDEs/DAEs?), then you should set your
 system up to use [StaticArrays.jl](https://github.com/JuliaArrays/StaticArrays.jl).
 This is demonstrated
-[http://docs.juliadiffeq.org/latest/tutorials/ode_example.html#Example-3:-Using-Other-Types-for-Systems-of-Equations-1](in the ODE tutorial)
+[in the ODE tutorial](http://docs.juliadiffeq.org/latest/tutorials/ode_example.html#Example-3:-Using-Other-Types-for-Systems-of-Equations-1)
 with static matrices. Static vectors/arrays are stack-allocated, and thus creating
 new arrays is free and the compiler doesn't have to heap-allocate any of the
 temporaries (that's the expensive part!). These have specialized super fast
@@ -139,12 +139,12 @@ function f(du,u,p,t)
 end
 ```
 
-Then in a callback you can make the `affect!` function modify `integrator.prob.f.params`.
+Then in a callback you can make the `affect!` function modify `integrator.prob.p`.
 For example, we can make it change when `u[2]<0.5` via:
 
 ```julia
 condition(t,u,integrator) = u[2] - 0.5
-affect!(integrator) = integrator.prob.f.params = 1
+affect!(integrator) = integrator.prob.p = 1
 ```
 
 Then it will change betweeen the two ODE choices for `du1` at that moment.

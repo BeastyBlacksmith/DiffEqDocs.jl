@@ -1,6 +1,6 @@
-using Documenter,DiffEqPDEBase,DiffEqProblemLibrary
+using Documenter,DiffEqBase,DiffEqPDEBase,DiffEqProblemLibrary
 
-makedocs(modules=[DiffEqPDEBase,DiffEqProblemLibrary],
+makedocs(modules=[DiffEqBase,DiffEqPDEBase,DiffEqProblemLibrary],
          doctest=false, clean=true,
          format =:html,
          sitename="DifferentialEquations.jl",
@@ -24,6 +24,7 @@ makedocs(modules=[DiffEqPDEBase,DiffEqProblemLibrary],
            "basics/solution.md",
            "basics/plot.md",
            "basics/integrator.md",
+           "basics/problem.md",
            "basics/faq.md",
            "basics/compatibility_chart.md"
          ],
@@ -47,6 +48,7 @@ makedocs(modules=[DiffEqPDEBase,DiffEqProblemLibrary],
            "solvers/split_ode_solve.md",
            "solvers/steady_state_solve.md",
            "solvers/bvp_solve.md",
+           "solvers/jump_solve.md",
            "solvers/sde_solve.md",
            "solvers/rode_solve.md",
            "solvers/dde_solve.md",
@@ -90,6 +92,6 @@ deploydocs(
    repo = "github.com/JuliaDiffEq/DiffEqDocs.jl.git",
    target = "build",
    osname = "linux",
-   julia = "0.6",
+   julia = "1.0",
    deps = nothing,
    make = nothing)
