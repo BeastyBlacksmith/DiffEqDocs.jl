@@ -204,8 +204,9 @@ The following functions make up the interface:
   `integrator` to match that of `integrator2`. Note that due to PI control and
   step acceleration this is more than matching the factors in most cases.
 * `proposed_dt(integrator)`: Returns the `dt` of the proposed step.
-* `terminate!(integrator)`: Terminates the integrator by emptying `tstops`. This
-  can be used in events and callbacks to immediately end the solution process.
+* `terminate!(integrator, retcode=:Terminated)`: Terminates the integrator by emptying `tstops`. This
+  can be used in events and callbacks to immediately end the solution process, the default return code
+  of the solution will be `:Terminated` but can be customized via the optional second argument.
 * `change_t_via_interpolation!(integrator,t,modify_save_endpoint=Val{false})`: This
   option lets one modify the current `t` and changes all of the corresponding
   values using the local interpolation. If the current solution has already
